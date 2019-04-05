@@ -19,7 +19,7 @@
  * purposes, and can be used in the hope that is useful, but everything   *
  * is to be taken "as is" and without any kind of warranty, implicit or   *
  * explicit. See the file LICENSE for further details.                    *
- *************************************************************************/ 
+ *************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,17 +32,14 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <arpa/inet.h> 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <alsa/asoundlib.h>
 #include <math.h>
 #include <pthread.h>
 
 /* buffer for reading from tun/tap interface, must be >= 1500 */
-#define BUFSIZE 2000   
-#define CLIENT 0
-#define SERVER 1
-#define PORT 55555
+#define BUFSIZE 2000
 
 /**************************************************************************
  * tun_alloc: allocates or reconnects to a tun/tap device. The caller     *
@@ -163,10 +160,10 @@ void setup_playback(snd_pcm_t *handle){
 int tx_state = 0;
 int packet_len = 0;
 char tx_buf[BUFSIZE];
-unsigned int samp_per_bit = 20;
-void *sound_thread(void *ptr){
-   snd_pcm_t *handle = (snd_pcm_t*) ptr;
-   double w = 2 * M_PI * 1000 / samp_rate;
+const unsigned int samp_per_bit = 20;
+_Noreturn void *sound_thread(void *ptr){
+   const snd_pcm_t *handle = (snd_pcm_t*) ptr;
+   const double w = 2 * M_PI * 1000 / samp_rate;
    short *pcm_buf = calloc(period, sizeof(short));
    int packet_t = 0;
    int pcm_size = 0;
@@ -234,7 +231,7 @@ int cwrite(int fd, char *buf, int n){
   return nwrite;
 }
 
-int main(int argc, char *argv[]) {
+_Noreturn int main(int argc, char *argv[]) {
   int tap_fd;
   int flags = IFF_TUN;
   char if_name[IFNAMSIZ] = "";

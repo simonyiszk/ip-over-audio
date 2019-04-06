@@ -37,6 +37,7 @@
 #include <alsa/asoundlib.h>
 #include <math.h>
 #include <pthread.h>
+#include <zlib.h>
 
 /* buffer for reading from tun/tap interface, must be >= 1500 */
 #define BUFSIZE 2000
@@ -158,16 +159,16 @@ void setup_playback(snd_pcm_t *handle){
 }
 
 int tx_state = 0;
-int packet_len = 0;
-char tx_buf[BUFSIZE];
+char tx_buf[1+2+BUFSIZE+4];
 const unsigned int samp_per_bit = 20;
 _Noreturn void *sound_thread(void *ptr){
-   const snd_pcm_t *handle = (snd_pcm_t*) ptr;
+   snd_pcm_t * const handle = (snd_pcm_t*) ptr;
    const double w = 2 * M_PI * 1000 / samp_rate;
    short *pcm_buf = calloc(period, sizeof(short));
    int packet_t = 0;
    int pcm_size = 0;
    int period_end = 0;
+   uint16_t packet_len = 0;
    while(1) {
       switch(tx_state) {
         case 0: //ready
@@ -177,6 +178,12 @@ _Noreturn void *sound_thread(void *ptr){
           printf("packet to tx\n");
           tx_state = 2;
           packet_t = 0;
+		  union{
+			  uint16_t val;
+			  char raw[2];
+		  } lengthField;
+		  memcpy(lengthField.raw, &tx_buf[1], 2);
+		  packet_len = 7+(ntohs(lengthField.val));
           pcm_size = samp_per_bit * 8 * packet_len;
         case 2: //txing
           period_end = packet_t + period;
@@ -249,14 +256,29 @@ _Noreturn int main(int argc, char *argv[]) {
     fprintf(stderr, "Error connecting to tun/tap interface %s!\n", if_name);
     exit(1);
   }
-  
+  printf("listening on %s\n", if_name);
   
   while(1) {
       switch(tx_state) {
         case 0: //ready
-          nread = cread(tap_fd, tx_buf, BUFSIZE);
+		  tx_buf[0]=0xf5;		//Start of Frame byte, easy to demod
+          nread = cread(tap_fd, &tx_buf[3], BUFSIZE);
           printf("got packet len %d\n", nread);
-          packet_len = nread;
+		  
+		  union{
+			  uint16_t val;
+			  char raw[2];
+		  } lengthField;
+		  lengthField.val=htons(nread);
+		  memcpy(&tx_buf[1], lengthField.raw, 2);
+		  
+		  union{
+			  uint32_t crc;
+			  char raw[4];
+		  } crcField;
+		  crcField.crc=htonl(crc32(0L, &tx_buf[3], nread));
+		  memcpy(&tx_buf[nread+3], crcField.raw, 4);
+          
           tx_state = 1;
           break;
         case 1: //waiting to tx

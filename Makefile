@@ -1,6 +1,6 @@
-ALSALIBS=$(shell pkg-config alsa --libs)
+LIBS=$(shell pkg-config --libs zlib alsa) -lm -lpthread
 
 ipoa: ipoa.c
-	gcc $^ -o $@ ${ALSALIBS} -lm -lpthread
+	gcc ${CFLAGS} $^ -o $@ ${LIBS}
 clean:
 	rm -f ipoa

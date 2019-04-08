@@ -38,7 +38,7 @@ class packet_source(gr.sync_block):
         return transmitted_bytes
 
     def add_packet(self, data):
-        #TODO Add preamble, header, ECC
+        #TODO Add proper preamble, header, ECC
         self.packet_data = struct.pack('<III', 0, 0, len(data)) + data + struct.pack('<II', 0, 0)
         self.ix = 0
 
@@ -52,6 +52,9 @@ class tap_sink(gr.sync_block):
         self.dev = dev
 
     def work(self, input_items, output_items):
+        #TODO detect header, parse packet length from header, parse packet
+        #TODO check ECC
+        #TODO write packet to tapdev
         return len(input_items[0])
 
 
@@ -67,6 +70,7 @@ class mod_block(gr.top_block):
         ##################################################
         # Blocks
         ##################################################
+        #TODO work out the bandwidth used, we might be getting aliases now.
         self.digital_psk_mod_0 = digital.psk.psk_mod(
           constellation_points=2,
           mod_code="gray",
@@ -76,7 +80,7 @@ class mod_block(gr.top_block):
           verbose=False,
           log=False,
           )
-        #TODO change this nullsource to the packet source
+
         self.packet_source = packet_source()
         self.blocks_multiply_xx_0 = blocks.multiply_vcc(1)
         self.blocks_complex_to_float_0 = blocks.complex_to_float(1)
@@ -147,6 +151,9 @@ def main():
     tapdev = TapDevice()
     mod = mod_block()
     thr = threading.Thread(target=demod_thread, args=[tapdev])
+    #TODO solve shutting down properly
+    #currently the demod thread gets stuck, and the program does not terminate
+    #if we set the background thread to daemon, the tap interface is not released properly
     #thr.daemon = True
     thr.start()
     while True:

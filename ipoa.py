@@ -59,13 +59,20 @@ class tap_sink(gr.sync_block):
 
 
 class mod_block(gr.top_block):
-    def __init__(self, samp_rate = 44100, carrier_freq = 1000):
+    def __init__(self, samp_rate = 44100, carrier_freq = 1000, samples_per_symbol = None):
         gr.top_block.__init__(self, 'mod_top_block')
         ##################################################
         # Variables
         ##################################################
         self.samp_rate = samp_rate
         self.carrier_freq = carrier_freq
+        if samples_per_symbol is None:
+            #this will result in a bandwidth that touches 200 Hz on the lower side
+            #this way we don't make aliases and don't use frequiencies under 200 Hz,
+            #because transmission characteristics can be bad with cheap speakers.
+            self.samples_per_symbol = 1 + samp_rate//(carrier_freq - 200)
+        else:
+            self.samples_per_symbol = samples_per_symbol
 
         ##################################################
         # Blocks
@@ -75,7 +82,7 @@ class mod_block(gr.top_block):
           constellation_points=2,
           mod_code="gray",
           differential=True,
-          samples_per_symbol=2,
+          samples_per_symbol=self.samples_per_symbol,
           excess_bw=0.35,
           verbose=False,
           log=False,

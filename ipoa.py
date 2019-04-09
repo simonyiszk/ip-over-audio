@@ -39,7 +39,8 @@ class packet_source(gr.sync_block):
 
     def add_packet(self, data):
         #TODO Add proper preamble, header, ECC
-        self.packet_data = struct.pack('<III', 0, 0, len(data)) + data + struct.pack('<II', 0, 0)
+        intmax = 0xffffffff
+        self.packet_data = struct.pack('<III', intmax, intmax, len(data)) + data + struct.pack('<II', 0, 0)
         self.ix = 0
 
 

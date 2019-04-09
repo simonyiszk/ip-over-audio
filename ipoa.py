@@ -60,7 +60,7 @@ class tap_sink(gr.sync_block):
 
 
 class mod_block(gr.top_block):
-    def __init__(self, samp_rate = 44100, carrier_freq = 1000, samples_per_symbol = None):
+    def __init__(self, samp_rate = 44100, carrier_freq = 3000, samples_per_symbol = None):
         gr.top_block.__init__(self, 'mod_top_block')
         ##################################################
         # Variables
@@ -112,20 +112,27 @@ class mod_block(gr.top_block):
 
 
 class demod_block(gr.top_block):
-    def __init__(self, tapdev):
+    def __init__(self, tapdev, samp_rate=44100, carrier_freq=3000, samples_per_symbol=None):
         gr.top_block.__init__(self, 'demod_top_block')
         ##################################################
         # Variables
         ##################################################
         self.transition_bw = transition_bw = 500
-        self.samp_rate = samp_rate = 44100
-        self.center_freq = center_freq = 3000
-        self.bandwidth = bandwidth = 4000
+        self.samp_rate = samp_rate
+        self.carrier_freq = carrier_freq
+        if samples_per_symbol is None:
+            #this will result in a bandwidth that touches 200 Hz on the lower side
+            #this way we don't make aliases and don't use frequiencies under 200 Hz,
+            #because transmission characteristics can be bad with cheap speakers.
+            self.samples_per_symbol = 1 + samp_rate//(carrier_freq - 200)
+        else:
+            self.samples_per_symbol = samples_per_symbol
+        self.bandwidth = samp_rate/self.samples_per_symbol*2
 
         ##################################################
         # Blocks
         ##################################################
-        self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(1, (firdes.low_pass(1,samp_rate, bandwidth, transition_bw)), center_freq, samp_rate)
+        self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(1, (firdes.low_pass(1,samp_rate, self.bandwidth, transition_bw)), carrier_freq, samp_rate)
         self.digital_psk_demod_0 = digital.psk.psk_demod(
           constellation_points=8,
           differential=True,
